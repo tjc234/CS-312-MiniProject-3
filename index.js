@@ -1,9 +1,18 @@
 import express from 'express';
 import bodyParser from 'body-parser';
+import { Pool } from 'pg';
 
 // initialize global variables
 const app = express();
 const port = 3000;
+const pool = new Pool({
+    user: 'posgres',
+    host: 'localhost',
+    database: 'BlogDB',
+    password: 'Ilovecoffee',
+    port: 5432
+});
+
 let posts = []; // array to hold posts
 let postToEdit = null; // variable to hold current post being editted
 
