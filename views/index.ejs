@@ -1,77 +1,60 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>Blog Website</title>
+        <title>Blog</title>
         <link rel="stylesheet" href="/css/style.css">
     </head>
 
     <body>
+
         <div class = "container">
-            <h1>New Blog Post:</h1>
-            <%# form and button for author %>
-            <form action = "/" method = "POST">
-                <div class = "form-group">
-                    <label for = "author">Author:</label>
-                    <%# if post to edit contains data, form is filled with data from author %>
-                    <input type = "text" id = "author" name = "author" value = "<%= postToEdit ? postToEdit.author : '' %>" required >
-                </div>
+            <h1>Welcome to Tyler's Blog</h1>
 
-                <%# form and button for title %>
-                <div class = "form-group">
-                    <label for = "title">Title:</label>
-                    <%# if post to edit contains data, form is filled with data from title %>
-                    <input type = "text" id = "title" name = "title" value = "<%= postToEdit ? postToEdit.title : '' %>" required>
-                </div>
+            <% if (user) { %>
+                <h2>Welcome, <%= user.name %>!</h2>
+                <h2>Create a New Post:</h2>
+                <form action="/" method="POST">
+                    <input type="hidden" name="user_id" value="<%= user.user_id %>">
+    
+                    <label for="title">Title:</label>
+                    <input type="text" id="title" name="title" required>
+    
+                    <label for="content">Content:</label>
+                    <textarea id="content" name="content" required></textarea>
+    
+                    <button type="submit">Submit</button>
+                </form>
+    
+                <h2>Recent Posts:</h2>
 
-                <%# form and button for content %>
-                <div class = "form-group">
-                    <label for = "content">Content:</label>
-                    <%# if post to edit contains data, form is filled with data from content %>
-                    <textarea id = "content" name = "content" required><%= postToEdit ? postToEdit.content : '' %></textarea>
-                </div>
+                <ul>
+                    <% posts.forEach(post => { %>
+                        <li>
+                            <h3><%= post.title %></h3>
+                            <p><%= post.body %></p>
+                            <p>By: <%= post.name %> on <%= post.date_created %></p>
+                            <% if (post.creator_user_id === user.user_id) { %>
 
-                <%# button for submit or updating post %>
-                <div class = "form-group">
-                    <%# if post to edit contians data, button will update post, otherwise submit %>
-                    <button type = "submit"><%= postToEdit ? 'Update Post' : 'Submit' %></button>
-                </div>
+                                <form action="/delete" method="POST">
+                                    <input type="hidden" name="blog_id" value="<%= post.blog_id %>">
+                                    <button type="submit">Delete</button>
+                                </form>
 
-                <%# if post to edit contains data assume we are editting %>
-                <% if( postToEdit ) { %>
-                    <%# hidden filed is created with original title %>
-                    <input type = "hidden" name = "originalTitle" value = "<%= postToEdit.title %>">
-                <% } %>
+                                <form action="/edit" method="POST">
+                                    <input type="hidden" name="blog_id" value="<%= post.blog_id %>">
+                                    <button type="submit">Edit</button>
+                                </form>
 
-            </form>
-            
-            <h2>Recent Posts:</h2>
-            <ul>
-                <%# loop over ever object in posts array %>
-                <% posts.forEach( post => { %>
-                    <%# new list item for each post %>
-                    <li>
-                        <%# display all content in post %>
-                        <h3><%= post.title %></h3>
-                        <p><%= post.content %></p>
-                        <p>By: <%= post.author %></p>
-                        <p>Time: <%= post.timestamp %></p>
-
-                        <div class = "button-group">
-                            <%# delete button %>
-                            <form action = "/delete" method = "POST">
-                                <input type = "hidden" name = "title" value = "<%= post.title %>">
-                                <button type = "submit" >Delete</button>
-                            </form>
-
-                            <%# edit button %>
-                            <form action = "/edit" method = "POST">
-                                <input type = "hidden" name = "title" value = "<%= post.title %>">
-                                <button type = "submit" >Edit</button>
-                            </form>
-                        </div>
-                    </li>
-                <% }) %>
-            </ul> 
-        </div>
+                            <% } %>
+                        </li>
+                    <% }) %>
+                    
+                </ul>
+    
+            <% } else { %>
+                <h2>Please <a href="/signin">sign in</a> to create a post or view recent posts.</h2>
+            <% } %>
+        </div>           
+         
     </body>
 </html>
