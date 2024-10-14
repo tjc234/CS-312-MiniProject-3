@@ -5,18 +5,23 @@ import bcrypt from 'bcrypt';
 import session from 'express-session';
 
 // initialize global variables
-const { Pool } = pkg;
+const { Client } = pkg;
 const app = express();
 const port = 3000;
 
 // database connection
-const pool = new Pool({
+const client = new Client({
     user: 'postgres',
     host: 'localhost',
     database: 'BlogDB',
     password: 'Ilovecoffee',
     port: 5432
 });
+
+// connect to the database
+client.connect()
+    .then(() => console.log('Connected to the database'))
+    .catch(err => console.error('Connection error', err.stack));
 
 // parse incoming requests and serve static files
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -34,27 +39,34 @@ app.use(session({
 
 // redirect to signin page
 app.get('/login', (req, res) => {
-    // redirect to signin page
     res.redirect('/signin');
 });
 
 // check if user is logged in
 const requireLogin = (req, res, next) => {
     if (!req.session.user) {
-        // redirect to login page if user is not logged in
+        // if not logged in redirect to login page
         return res.redirect('/login');
     } 
+
+    // if logged in proceed to the next middleware
     next();
 }
 
 // routing for homepage (GET)
 app.get("/", requireLogin, async (req, res) => {
+    // fetch all posts from the database
     try {
-        // fetch posts from the database and order by date created
-        const result = await pool.query('SELECT * FROM blogs ORDER BY date_created DESC');
+        const result = await client.query(`
+            SELECT blogs.*, users.username, users.name 
+            FROM blogs 
+            JOIN users ON blogs.creator_user_id = users.user_id 
+            ORDER BY date_created DESC
+        `);
+        // store the posts in an object
         const posts = result.rows;
 
-        // render index page with posts object and user session
+        // render the index page with posts
         res.render('index', { posts: posts, user: req.session.user });
 
     // catch any errors
@@ -69,13 +81,13 @@ app.post("/", requireLogin, async (req, res) => {
     const { title, content } = req.body;
     const user = req.session.user;
 
-    // start creating post
+    // insert the new post into the database
     try {
-        // insert new post into the database
-        await pool.query(
+        await client.query(
             'INSERT INTO blogs (title, body, creator_user_id, date_created) VALUES ($1, $2, $3, NOW())',
             [title, content, user.user_id]
         );
+        // redirect to the homepage
         res.redirect('/');
 
     // catch any errors
@@ -90,10 +102,9 @@ app.post("/delete", requireLogin, async (req, res) => {
     const blog_id = req.body.blog_id;
     const user = req.session.user;
 
-    // start deleting post
+    // delete the post from the database
     try {
-        // only delete post if the current user created it
-        await pool.query('DELETE FROM blogs WHERE blog_id = $1 AND creator_user_id = $2', [blog_id, user.user_id]);
+        await client.query('DELETE FROM blogs WHERE blog_id = $1 AND creator_user_id = $2', [blog_id, user.user_id]);
         res.redirect('/');
 
     // catch any errors
@@ -108,13 +119,13 @@ app.post("/edit", requireLogin, async (req, res) => {
     const { blog_id, title, content } = req.body;
     const user = req.session.user;
 
-    // start editing post
+    // update the post in the database
     try {
-        // only update post if the current user created it
-        await pool.query(
+        await client.query(
             'UPDATE blogs SET title = $1, body = $2 WHERE blog_id = $3 AND creator_user_id = $4',
             [title, content, blog_id, user.user_id]
         );
+        // redirect to the homepage
         res.redirect('/');
 
     // catch any errors
@@ -133,19 +144,18 @@ app.get("/signup", (req, res) => {
 app.post("/signup", async (req, res) => {
     const { username, password, name } = req.body;
 
-    // start creating user
+    // hash the password and insert the new user into the database
     try {
-        // hash the password
         const hashedPassword = await bcrypt.hash(password, 10);
-
-        // insert new user into the database
-        await pool.query(
+        await client.query(
             'INSERT INTO users (username, password, name) VALUES ($1, $2, $3)',
             [username, hashedPassword, name]
         );
+
+        // redirect to the sign-in page
         res.redirect('/signin');
 
-    // catch any errors    
+    // catch any errors
     } catch (err) {
         console.error('Error creating user:', err);
         res.status(500).send('Internal server error');
@@ -161,22 +171,24 @@ app.get("/signin", (req, res) => {
 app.post("/signin", async (req, res) => {
     const { username, password } = req.body;
 
-    // start signing in
+    // check if the user exists and the password is correct
     try {
-        // find user by username
-        const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+        const result = await client.query('SELECT * FROM users WHERE username = $1', [username]);
         const user = result.rows[0];
 
-        // if username and password are valid
         if (user && await bcrypt.compare(password, user.password)) {
-            // store user info in session after successful login
             req.session.user = user;
+
+            // redirect to the homepage
             res.redirect('/');
-        
-        // if username or password is invalid
+
+        // if the user does not exist or the password is incorrect
         } else {
+            // redirect to the signin page
             res.status(400).send('Invalid username or password');
         }
+
+    // catch any errors
     } catch (err) {
         console.error('Error during sign-in:', err);
         res.status(500).send('Internal server error');
@@ -185,7 +197,7 @@ app.post("/signin", async (req, res) => {
 
 // log out (GET)
 app.get("/logout", (req, res) => {
-    // destroy session and redirect to signin page
+    // destroy the session and redirect to the signin page
     req.session.destroy(() => {
         res.redirect('/signin');
     });
@@ -193,6 +205,14 @@ app.get("/logout", (req, res) => {
 
 // start the server (LISTEN)
 app.listen(port, () => {
-    // log message to the console to confirm server start
+    // log the port the server is running on
     console.log(`Server running on port ${port}.`);
+});
+
+// close the client on exit
+process.on('exit', () => {
+    // close the database connection
+    client.end(() => {
+        console.log('Database connection closed');
+    });
 });
