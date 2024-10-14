@@ -1,61 +1,82 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <title>Blog</title>
-        <link rel="stylesheet" href="/css/style.css">
-    </head>
+<head>
+    <title>Blog</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
 
-    <body>
+<body>
 
-        <div class = "container">
-            <h1>Welcome to Tyler's Blog</h1>
+    <div class="container">
+        <h1>Welcome to Tyler's Blog</h1>
 
-            <% if (user) { %>
-                <h2>Welcome, <%= user.name %>!</h2>
-                <h2>Create a New Post:</h2>
-                <form action="/" method="POST">
-                    <input type="hidden" name="user_id" value="<%= user.user_id %>">
-    
-                    <label for="title">Title:</label>
-                    <input type="text" id="title" name="title" required>
-    
-                    <label for="content">Content:</label>
-                    <textarea id="content" name="content" required></textarea>
-    
-                    <button type="submit">Submit</button>
-                </form>
-    
-                <h2>Recent Posts:</h2>
+        <% if (user) { %>
+            <h2>Welcome, <%= user.name %>!</h2>
+            <h2>Create a New Post:</h2>
+            <form action="/" method="POST">
+                <input type="hidden" name="user_id" value="<%= user.user_id %>">
 
-                <ul>
-                    <% posts.forEach(post => { %>
-                        <li>
-                            <h3><%= post.title %></h3>
-                            <p><%= post.body %></p>
-                            <p>By: <%= post.name %> on <%= post.date_created %></p>
-                            
-                            <% if (post.creator_user_id === user.user_id) { %>
+                <label for="title">Title:</label>
+                <input type="text" id="title" name="title" required>
 
-                                <form action="/delete" method="POST">
-                                    <input type="hidden" name="blog_id" value="<%= post.blog_id %>">
-                                    <button type="submit">Delete</button>
-                                </form>
+                <label for="content">Content:</label>
+                <textarea id="content" name="content" required></textarea>
 
+                <button type="submit">Submit</button>
+            </form>
+
+            <h2>Recent Posts:</h2>
+
+            <ul>
+                <% posts.forEach(post => { %>
+                    <li>
+                        <h3><%= post.title %></h3>
+                        <p><%= post.body %></p>
+                        <p>By: <%= post.name %> on <%= post.date_created.toLocaleString() %></p>
+                        
+                        <% if (post.creator_user_id === user.user_id) { %>
+
+                            <form action="/delete" method="POST" style="display:inline;">
+                                <input type="hidden" name="blog_id" value="<%= post.blog_id %>">
+                                <button type="submit">Delete</button>
+                            </form>
+
+                            <button onclick="toggleEditForm('<%= post.blog_id %>', '<%= post.title %>', '<%= post.body %>')">Edit</button>
+
+                            <div id="edit-form-<%= post.blog_id %>" class="edit-form" style="display:none;">
                                 <form action="/edit" method="POST">
                                     <input type="hidden" name="blog_id" value="<%= post.blog_id %>">
-                                    <button type="submit">Edit</button>
+                                    <label for="edit-title">Title:</label>
+                                    <input type="text" id="edit-title" name="title" value="<%= post.title %>" required>
+
+                                    <label for="edit-content">Content:</label>
+                                    <textarea id="edit-content" name="content" required><%= post.body %></textarea>
+
+                                    <button type="submit">Update Post</button>
+                                    <button type="button" onclick="toggleEditForm('<%= post.blog_id %>')">Cancel</button>
                                 </form>
+                            </div>
 
-                            <% } %>
-                        </li>
-                    <% }) %>
+                        <% } %>
+                    </li>
+                <% }) %>
+            </ul>
 
-                </ul>
+        <% } else { %>
+            <h2>Please <a href="/signin">sign in</a> to create a post or view recent posts.</h2>
+        <% } %>
+    </div>
+
+    <script>
+        function toggleEditForm(blogId, title = '', body = '') {
+            const editForm = document.getElementById(`edit-form-${blogId}`);
+            if (editForm.style.display === "none" || editForm.style.display === "") {
+                editForm.style.display = "block";
+            } else {
+                editForm.style.display = "none";
+            }
+        }
+    </script>
     
-            <% } else { %>
-                <h2>Please <a href="/signin">sign in</a> to create a post or view recent posts.</h2>
-            <% } %>
-        </div>           
-         
-    </body>
+</body>
 </html>
