@@ -1,21 +1,22 @@
 import express from 'express';
 import bodyParser from 'body-parser';
 import pkg from 'pg';
-const { Pool } = pkg;
+import bcrypt from 'bcrypt';
+import session from 'express-session';
 
 // initialize global variables
+const { Pool } = pkg;
 const app = express();
 const port = 3000;
+
+// database connection
 const pool = new Pool({
-    user: 'posgres',
+    user: 'postgres',
     host: 'localhost',
     database: 'BlogDB',
     password: 'Ilovecoffee',
     port: 5432
 });
-
-let posts = []; // array to hold posts
-let postToEdit = null; // variable to hold current post being editted
 
 // parse incoming requests and serve static files
 app.use(bodyParser.urlencoded({extended: true}));
@@ -23,6 +24,23 @@ app.use(express.static('public'));
 
 // set the view engine to ejs
 app.set('view engine', 'ejs'); 
+
+// setup session for login
+app.use(session({
+    secret: 'secret',
+    resave: false,
+    saveUninitialized: false
+}));
+
+// check if user is logged in
+const requireLogin = (req, res, next) => {
+    if (!req.session.user) {
+        res.redirect('/login');
+    } 
+    next();
+}
+
+
 
 // routing for homepage (get)
 app.get("/", (req, res) => {
